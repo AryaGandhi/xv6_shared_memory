@@ -34,6 +34,12 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+// Track mapped shared pages
+struct share_map_ext {
+	int key;
+	void *va;
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
@@ -49,6 +55,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+  struct share_map_ext shm[32];// Pages shared by process
 };
 
 // Process memory is laid out contiguously, low addresses first:
