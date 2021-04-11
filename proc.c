@@ -20,6 +20,13 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+void shminit(){
+  for(int i = 0; i < SHMMNI; i++){
+    glob_shm[i].key = -1;
+    glob_shm[i].shmid = i;
+  }
+}
+
 void
 pinit(void)
 {
@@ -111,10 +118,10 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-  // Added
-  for (int i = 0; i < 32; i++) {
-    p->shm[i].key = -1;
-    p->shm[i].va = 0;
+
+  for(int i = 0; i < 16; i++) {
+    p->proc_shm[i].key = -1;
+    p->proc_shm[i].va = 0;
   }
 
   return p;

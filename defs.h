@@ -103,6 +103,7 @@ int             pipewrite(struct pipe*, char*, int);
 
 //PAGEBREAK: 16
 // proc.c
+void            shminit(void);
 int             cpuid(void);
 void            exit(void);
 int             fork(void);
@@ -171,6 +172,7 @@ void            uartintr(void);
 void            uartputc(int);
 
 // vm.c
+char *          shmgetuvm(pde_t *, int, int);
 void            seginit(void);
 void            kvmalloc(void);
 pde_t*          setupkvm(void);
