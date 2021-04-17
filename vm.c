@@ -218,20 +218,24 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
 
 char * shmgetuvm(pde_t *pgdir, int oldsz, int newsz){
   int a;
-  char *mem = 0;
+  char * mem[10];
+  int i = 0;
+  for(i = 0; i < 10; i++)
+  	mem[i] = 0;
   if(newsz >= KERNBASE)
-    return (void *)0;
+    return (char *)0;
   a = PGROUNDUP(oldsz);
-  for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
-    if(mem == 0){
-      cprintf("allocuvm out of memory\n");
+  i = 0;
+  for(; a < newsz && i < 10; a += PGSIZE, i++){
+    mem[i] = kalloc();
+    if(mem[i] == 0){
+      cprintf("shmgetuvm out of memory\n");
       deallocuvm(pgdir, newsz, oldsz);
-      return (void *)0;
+      return (char *)0;
     }
-    memset(mem, 0, PGSIZE);
+    memset(mem[i], 0, PGSIZE);
   }
-  return mem;
+  return * mem;
 }
 
 // Allocate page tables and physical memory to grow process from oldsz to

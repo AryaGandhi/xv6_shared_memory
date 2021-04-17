@@ -18,10 +18,12 @@ int sys_shmget(void){
   if(argint(2, &flag) < 0)
     return -1;
   for(int i = 0; i < SHMMNI; i++){  //if shared memory already exists for that key
-    if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
-      return glob_shm[i].shmid;
+    if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size && (flag == (IPC_CREAT|IPC_EXCL|0666) || flag == (IPC_CREAT|IPC_EXCL|0444)))
+      return -1;  //EEXIST
     if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz < size)  //EINVAL
       return -1;
+    if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
+      return glob_shm[i].shmid;
   }
   if((PGROUNDUP(size) + total_shared_memory)/PGSIZE > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
     return -1;
@@ -56,11 +58,12 @@ int sys_shmget(void){
   if(address == 0)
     return -1;
   glob_shm[flag2].key = key;
-  glob_shm[flag2].addr = address;
+  glob_shm[flag2].memory = address;
   glob_shm[flag2].shmid_ds.shm_segsz = size;
   glob_shm[flag2].shmid_ds.shm_cpid = curproc->pid;
   glob_shm[flag2].shmid_ds.shm_lpid = 0;
   glob_shm[flag2].shmid_ds.shm_attaches = 0;
+  glob_shm[flag2].shmid_ds.shm_perm.mode = flag % 1000;  //to get the least significant 9 bits of the flag
   return glob_shm[flag2].shmid;
 }
 
@@ -75,6 +78,13 @@ int sys_shmat(void){
     return -1;
   if(argint(2, &flag) < 0)
     return -1;
+  permissions = glob_shm[shmid].shmid_ds.shm_perm.mode;
+  if permissions == 666;
+    int write = 1;
+  else if permissions == 444;
+    int read = 1;
+  struct proc *curproc = myproc();
+  shmmapmem(curproc->pgdir, 
 }
 
 int sys_shmdt(void){

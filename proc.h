@@ -3,6 +3,17 @@
 #define SHMMAX 40960  //(40KB)Maximum size in bytes for a shared memory segment.
 #define SHMMIN 1  //Minimum size in bytes for a shared memory segment(effectively 4096 B because page size is 4096 B)
 
+#define IPC_CREAT 01000  //Create key if key does not exist.
+#define IPC_EXCL 02000  //Fail if key exists.
+
+#define IPC_PRIVATE 0
+
+#define IPC_RMID 0  //Remove identifier.
+#define IPC_SET 1  //Set `ipc_perm' options.
+#define IPC_STAT 2  //Get `ipc_perm' options.
+#define IPC_INFO 3  //See ipcs.
+
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -57,7 +68,7 @@ int no_of_shared_memory_segments;  //total number of shared memory segments.
 struct glob_shm{
   int key;
   int shmid;
-  char * addr;
+  char * memory;
   struct shmid_ds shmid_ds;
 }glob_shm[SHMMNI];
 
