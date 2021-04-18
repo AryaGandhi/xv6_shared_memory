@@ -7,7 +7,7 @@
 #include "proc.h"
 
 int main(){
-  int shmid = shmget(100, 10000, IPC_CREAT|IPC_EXCL|0666);
+  int shmid = shmget(100, 10000, 0666);
   if(shmid < 0){
     printf(1, "error\n");
     exit();
@@ -19,10 +19,7 @@ int main(){
     printf(1, "error\n");
   else
     printf(1, "%d\n", shm);
-  char * s = shm;
-  for (char c = 'A'; c <= 'Z'; c++)
-    *s++ = c;
-  *s = 0;
+  char * s;
   for (s = shm; *s != 0; s++)
     printf(1, "%c", *s);
   printf(1, "\n");

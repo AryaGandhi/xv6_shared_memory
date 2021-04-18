@@ -216,26 +216,48 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
-char * shmgetuvm(pde_t *pgdir, int oldsz, int newsz){
+int shmgetuvm(int size, char ** mem){
   int a;
-  char * mem[10];
+  //char * mem[10];
   int i = 0;
   for(i = 0; i < 10; i++)
   	mem[i] = 0;
-  if(newsz >= KERNBASE)
-    return (char *)0;
-  a = PGROUNDUP(oldsz);
+  if(size >= KERNBASE - HEAPMAX)
+    return 0;
+  a = 0;
   i = 0;
-  for(; a < newsz && i < 10; a += PGSIZE, i++){
+  for(; a < size && i < 10; a += PGSIZE, i++){
     mem[i] = kalloc();
     if(mem[i] == 0){
       cprintf("shmgetuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      return (char *)0;
+      //deallocuvm(pgdir, newsz, oldsz);
+      return 0;
     }
     memset(mem[i], 0, PGSIZE);
   }
-  return * mem;
+  return 1;
+}
+
+int shmmapmem(pde_t *pgdir, int oldsz, int newsz, char ** mem, int perm){
+  if(newsz >= KERNBASE)
+    return 0;
+  int a;
+  int i = 0;
+  int check;
+  a = PGROUNDUP(oldsz);
+  for(; a < newsz  && mem[i]!=0; a += PGSIZE, i++){
+    if(perm == 444)
+      check = mappages(pgdir, (char*)a, PGSIZE, V2P(mem[i]), PTE_U);
+    if(perm == 666)
+      check = mappages(pgdir, (char*)a, PGSIZE, V2P(mem[i]), PTE_W|PTE_U);
+    if(check < 0){
+      cprintf("allocuvm out of memory (2)\n");
+      deallocuvm(pgdir, newsz, oldsz);
+      kfree(mem[i]);
+      return 0;
+    }
+  }
+  return PGROUNDUP(oldsz);
 }
 
 // Allocate page tables and physical memory to grow process from oldsz to

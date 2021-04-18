@@ -119,6 +119,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+  p->shmsz = HEAPMAX;
   for(int i = 0; i < 16; i++) {
     p->proc_shm[i].key = -1;
     p->proc_shm[i].va = 0;

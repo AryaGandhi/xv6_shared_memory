@@ -68,7 +68,7 @@ int no_of_shared_memory_segments;  //total number of shared memory segments.
 struct glob_shm{
   int key;
   int shmid;
-  char * memory;
+  char ** memory;
   struct shmid_ds shmid_ds;
 }glob_shm[SHMMNI];
 
