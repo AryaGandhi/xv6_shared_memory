@@ -102,11 +102,12 @@ void * sys_shmat(void){
   curproc->shmsz = (void *)((int)curproc->shmsz + PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz));
   return check;
 }
-/*
+
 int sys_shmdt(void){
-  char * shmaddr;
-  if(argptr(0, &shmaddr, sizeof(*shmaddr)) < 0)
+  int shmaddress;
+  if(argint(0, &shmaddress) < 0)
     return -1;
+  void * shmaddr = (void *)shmaddress;
   struct proc *curproc = myproc();
   int flag1 = -1;
   for(int i = 0; i < 16; i++){
@@ -138,7 +139,7 @@ int sys_shmdt(void){
 	glob_shm[flag2].shmid_ds.shm_lpid = curproc->pid;
 	return 0;
 }
-
+/*
 int sys_shmctl(void){
   int shmid;
   int cmd;

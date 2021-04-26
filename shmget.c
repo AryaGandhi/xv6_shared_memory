@@ -41,8 +41,6 @@ int main(){
   else
     printf(1, "%p\n", shm2);
   char * s2 = shm2;
-  //s[0] = 'a';
-  //s[1] = 'b';
   for (char c2 = 'A'; c2 <= 'Z'; c2++)
     *s2++ = c2;
   *s2 = 0;
@@ -62,8 +60,6 @@ int main(){
   else
     printf(1, "%p\n", shm3);
   char * s3 = shm3;
-  //s[0] = 'a';
-  //s[1] = 'b';
   for (char c3 = 'A'; c3 <= 'M'; c3++)
     *s3++ = c3;
   *s3 = 0;
@@ -71,18 +67,14 @@ int main(){
     printf(1, "%c", *s3);
   printf(1, "\n");
   printf(1, "%p\n", shm3);
-  /*int shmdet = shmdt(shm3);
+  int shmdet = shmdt(shm3);
   printf(1, "%d\n", shmdet);
   if(shmdet == -1){
     printf(1, "error\n");
     exit();
   }
   if(shmdet == 0){
-    printf(1, "abc\n");
-    for (s3 = shm3; *s3 != 0; s3++){
-      printf(1, "1\n");
-      printf(1, "%c", *s3);
-    }
-  }*/
+    printf(1, "shmdt successful\n");
+  }
   exit();
 }

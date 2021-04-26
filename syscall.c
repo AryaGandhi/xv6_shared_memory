@@ -132,7 +132,7 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_shmget] sys_shmget,
 [SYS_shmat] sys_shmat,
-//[SYS_shmdt] sys_shmdt,
+[SYS_shmdt] sys_shmdt,
 //[SYS_shmctl] sys_shmctl,
 };
 
