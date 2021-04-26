@@ -68,7 +68,7 @@ int no_of_shared_memory_segments;  //total number of shared memory segments.
 struct glob_shm{
   int key;
   int shmid;
-  char ** memory;
+  void * memory[10];
   struct shmid_ds shmid_ds;
 }glob_shm[SHMMNI];
 
@@ -93,7 +93,7 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  int shmsz;                    //current size of shared memory
+  void * shmsz;                //current size of shared memory
   struct proc_shm proc_shm[16];// Pages shared by process
 };
 

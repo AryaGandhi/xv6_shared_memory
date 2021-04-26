@@ -25,6 +25,19 @@ int sys_shmget(void){
     if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
       return glob_shm[i].shmid;
   }
+  if(key == IPC_PRIVATE){  //assigning a random key if value of key is given IPC_PRIVATE
+    if(glob_shm[0].key == -1)
+      key = 7845152;
+    else{
+      key = 142589 * glob_shm[0].key;
+      for(int i = 0; i < SHMMNI; i++){
+        if(glob_shm[i].key == key)
+          key = glob_shm[i].key / 3;
+        if(glob_shm[i].key == key)
+          break;
+      }
+    }
+  }
   if((PGROUNDUP(size) + total_shared_memory)/PGSIZE > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
     return -1;
   if(PGROUNDUP(size) > SHMMAX)  //EINVAL 
@@ -42,34 +55,28 @@ int sys_shmget(void){
   if(flag2 == -1)  //limit for number of shared memory segments for system reached
     return -1;
   
-  static char * address[10];
-  for(int i = 0; i < 10; i++)
-  	address[i] = 0;
-  int check = shmgetuvm(size, address);
+  int check = shmgetuvm(size, flag2);
   if(check == 0)
     return -1;
   glob_shm[flag2].key = key;
-  glob_shm[flag2].memory = address;
   glob_shm[flag2].shmid_ds.shm_segsz = size;
   glob_shm[flag2].shmid_ds.shm_cpid = curproc->pid;
   glob_shm[flag2].shmid_ds.shm_lpid = 0;
   glob_shm[flag2].shmid_ds.shm_attaches = 0;
-  glob_shm[flag2].shmid_ds.shm_perm.mode = flag % 1000;  //to get the least significant 9 bits of the flag
-  for(int i = 0; i < 10; i++)
-    cprintf("%d\n", glob_shm[0].memory[i]);
+  glob_shm[flag2].shmid_ds.shm_perm.mode = flag;  //to get the least significant 9 bits of the flag
   return glob_shm[flag2].shmid;
 }
 
-int sys_shmat(void){
+void * sys_shmat(void){
   int shmid;
   char * shmaddr;
   int flag;
   if(argint(0, &shmid) < 0)
-    return -1;
+    return (void *)-1;
   if(argptr(1, &shmaddr, sizeof(*shmaddr)) < 0)
-    return -1;
+    return (void *)-1;
   if(argint(2, &flag) < 0)
-    return -1;
+    return (void *)-1;
   int permissions = glob_shm[shmid].shmid_ds.shm_perm.mode;
   struct proc *curproc = myproc();
   int flag1 = -1;
@@ -82,20 +89,20 @@ int sys_shmat(void){
     }
   }
   if(flag1 == -1)  //limit for number of shared memory segments for that process reached
-    return -1;
-  int currentsize = curproc->shmsz;
-  int check = shmmapmem(curproc->pgdir, currentsize, currentsize + glob_shm[shmid].shmid_ds.shm_segsz, glob_shm[shmid].memory, permissions);
-  if(check == 0)
-    return -1;
+    return (void *)-1;
+  void * currentsize = curproc->shmsz;
+  int pages = PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz) / PGSIZE;
+  void * check = shmmapmem(curproc->pgdir, currentsize, pages, shmid, permissions);
+  if(!check)
+    return (void *)-1;
   curproc->proc_shm[flag1].key = glob_shm[shmid].key;
-  curproc->proc_shm[flag1].va = (void *)check;
+  curproc->proc_shm[flag1].va = check;
   glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
   glob_shm[shmid].shmid_ds.shm_attaches++;
-  curproc->shmsz =+ PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz);
-  cprintf("ret %d\n", glob_shm[shmid].memory[0]);
-  return (int)*glob_shm[shmid].memory[0];
+  curproc->shmsz = (void *)((int)curproc->shmsz + PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz));
+  return check;
 }
-
+/*
 int sys_shmdt(void){
   char * shmaddr;
   if(argptr(0, &shmaddr, sizeof(*shmaddr)) < 0)
@@ -122,16 +129,16 @@ int sys_shmdt(void){
   	else
   		continue;
   }
-	int oldsz = curproc->shmsz;
-	int newsz = curproc->shmsz - glob_shm[flag2].shmid_ds.shm_segsz;
-	curproc->shmsz = deallocuvm(curproc->pgdir, oldsz, newsz);
+	int oldsz = (int)curproc->shmsz;
+	int newsz = (int)curproc->shmsz - glob_shm[flag2].shmid_ds.shm_segsz;
+	curproc->shmsz = (void *)deallocuvm(curproc->pgdir, oldsz, newsz);
 	curproc->proc_shm[flag1].va = 0;
 	curproc->proc_shm[flag1].key = -1;
 	glob_shm[flag2].shmid_ds.shm_attaches--;
 	glob_shm[flag2].shmid_ds.shm_lpid = curproc->pid;
 	return 0;
 }
-/*
+
 int sys_shmctl(void){
   int shmid;
   int cmd;

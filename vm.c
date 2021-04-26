@@ -216,48 +216,42 @@ loaduvm(pde_t *pgdir, char *addr, struct inode *ip, uint offset, uint sz)
   return 0;
 }
 
-int shmgetuvm(int size, char ** mem){
-  int a;
-  //char * mem[10];
-  int i = 0;
-  for(i = 0; i < 10; i++)
-  	mem[i] = 0;
+int shmgetuvm(int size, int index){
   if(size >= KERNBASE - HEAPMAX)
     return 0;
-  a = 0;
-  i = 0;
+  int a = 0;
+  int i = 0;
   for(; a < size && i < 10; a += PGSIZE, i++){
-    mem[i] = kalloc();
-    if(mem[i] == 0){
+    char * mem = kalloc();
+    if(mem == 0){
       cprintf("shmgetuvm out of memory\n");
-      //deallocuvm(pgdir, newsz, oldsz);
       return 0;
     }
-    memset(mem[i], 0, PGSIZE);
+    memset(mem, 0, PGSIZE);
+    glob_shm[index].memory[i] = (void *)V2P(mem);
   }
   return 1;
 }
 
-int shmmapmem(pde_t *pgdir, int oldsz, int newsz, char ** mem, int perm){
-  if(newsz >= KERNBASE)
-    return 0;
-  int a;
-  int i = 0;
+void* shmmapmem(pde_t *pgdir, void * oldsz, uint pages, int shmid, int perm){
+  if(oldsz + pages * PGSIZE >= (void *)KERNBASE)
+    return (void *)0;
   int check;
-  a = PGROUNDUP(oldsz);
-  for(; a < newsz  && mem[i]!=0; a += PGSIZE, i++){
-    if(perm == 444)
-      check = mappages(pgdir, (char*)a, PGSIZE, V2P(mem[i]), PTE_U);
-    if(perm == 666)
-      check = mappages(pgdir, (char*)a, PGSIZE, V2P(mem[i]), PTE_W|PTE_U);
+  void *a = oldsz;
+  for(int i = 0; i < pages; i++){
+    if(perm == 1828 || perm == 804 || perm == 292)
+      check = mappages(pgdir, (void*)(a), PGSIZE, (uint)(glob_shm[shmid].memory[i]), PTE_U);
+    else if(perm == 1974 || perm == 950 || perm == 438)
+      check = mappages(pgdir, (void*)(a), PGSIZE, (uint)(glob_shm[shmid].memory[i]), PTE_W|PTE_U);
     if(check < 0){
-      cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz);
-      kfree(mem[i]);
-      return 0;
+      cprintf("shmmapmem out of memory (2)\n");
+      deallocuvm(pgdir, (int)(oldsz + pages * PGSIZE), (int)oldsz);
+      kfree(glob_shm[shmid].memory[i]);
+      return (void *)0;
     }
+    a = (void *)((uint)a + PGSIZE);
   }
-  return PGROUNDUP(oldsz);
+  return oldsz;
 }
 
 // Allocate page tables and physical memory to grow process from oldsz to
@@ -331,7 +325,7 @@ freevm(pde_t *pgdir)
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0);
+  deallocuvm(pgdir, HEAPMAX, 0);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P){
       char * v = P2V(PTE_ADDR(pgdir[i]));

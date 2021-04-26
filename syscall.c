@@ -105,7 +105,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_shmget(void);
 extern int sys_shmat(void);
-//extern int sys_shmdt(void);
+extern int sys_shmdt(void);
 //extern int sys_shmctl(void);
 
 static int (*syscalls[])(void) = {
