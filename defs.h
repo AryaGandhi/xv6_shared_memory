@@ -174,6 +174,7 @@ void            uartputc(int);
 // vm.c
 int             shmgetuvm(int, int);
 void*           shmmapmem(pde_t*, void *, uint, int, int);
+int             deallocshm(pde_t*, uint, uint);
 void            seginit(void);
 void            kvmalloc(void);
 pde_t*          setupkvm(void);

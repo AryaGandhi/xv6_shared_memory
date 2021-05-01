@@ -239,10 +239,14 @@ void* shmmapmem(pde_t *pgdir, void * oldsz, uint pages, int shmid, int perm){
   int check;
   void *a = oldsz;
   for(int i = 0; i < pages; i++){
-    if(perm == 1828 || perm == 804 || perm == 292)
+    if(perm == 444)  //read permission only
       check = mappages(pgdir, (void*)(a), PGSIZE, (uint)(glob_shm[shmid].memory[i]), PTE_U);
-    else if(perm == 1974 || perm == 950 || perm == 438)
+    else if(perm == 666)  // read and write permission
       check = mappages(pgdir, (void*)(a), PGSIZE, (uint)(glob_shm[shmid].memory[i]), PTE_W|PTE_U);
+    else{
+      cprintf("Wrong permissions\n");
+      return (void *)0;
+    }
     if(check < 0){
       cprintf("shmmapmem out of memory (2)\n");
       deallocuvm(pgdir, (int)(oldsz + pages * PGSIZE), (int)oldsz);
@@ -252,6 +256,32 @@ void* shmmapmem(pde_t *pgdir, void * oldsz, uint pages, int shmid, int perm){
     a = (void *)((uint)a + PGSIZE);
   }
   return oldsz;
+}
+
+int
+deallocshm(pde_t *pgdir, uint oldsz, uint newsz)
+{
+  pte_t *pte;
+  uint a;
+
+  if(newsz >= oldsz)
+    return oldsz;
+
+  a = PGROUNDUP(newsz);
+  for(; a  < oldsz; a += PGSIZE){
+    pte = walkpgdir(pgdir, (char*)a, 0);
+    if(!pte)
+      a = PGADDR(PDX(a) + 1, 0, 0) - PGSIZE;
+    else if((*pte & PTE_P) != 0){
+      /*pa = PTE_ADDR(*pte);
+      if(pa == 0)
+        panic("kfree");
+      char *v = P2V(pa);
+      kfree(v);*/
+      *pte = 0;
+    }
+  }
+  return newsz;
 }
 
 // Allocate page tables and physical memory to grow process from oldsz to

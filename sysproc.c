@@ -38,7 +38,7 @@ int sys_shmget(void){
       }
     }
   }
-  if((PGROUNDUP(size) + total_shared_memory)/PGSIZE > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
+  if(((PGROUNDUP(size))/PGSIZE + total_shared_memory) > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
     return -1;
   if(PGROUNDUP(size) > SHMMAX)  //EINVAL 
     return -1;
@@ -62,8 +62,19 @@ int sys_shmget(void){
   glob_shm[flag2].shmid_ds.shm_segsz = size;
   glob_shm[flag2].shmid_ds.shm_cpid = curproc->pid;
   glob_shm[flag2].shmid_ds.shm_lpid = 0;
-  glob_shm[flag2].shmid_ds.shm_attaches = 0;
-  glob_shm[flag2].shmid_ds.shm_perm.mode = flag;  //to get the least significant 9 bits of the flag
+  glob_shm[flag2].shmid_ds.shm_nattch = 0;
+  int flagend = flag & 0x000001FF;
+  int flagoctal = 0;
+  int i = 1;
+  while(flagend != 0){  /* decimal to octal conversion code via https://www.programiz.com/c-programming/examples/octal-decimal-convert */
+    flagoctal += (flagend % 8) * i;
+    flagend /= 8;
+    i *= 10;
+  }
+  glob_shm[flag2].shmid_ds.shm_perm.mode = flagoctal;  //to get the least significant 9 bits of the flag
+  glob_shm[flag2].shmid_ds.shm_perm.key = key;
+  total_shared_memory = total_shared_memory + (PGROUNDUP(size))/PGSIZE;
+  no_of_shared_memory_segments = no_of_shared_memory_segments + 1;
   return glob_shm[flag2].shmid;
 }
 
@@ -81,9 +92,9 @@ void * sys_shmat(void){
   struct proc *curproc = myproc();
   int flag1 = -1;
   for(int i = 0; i < 16; i++){
-    if(curproc->proc_shm[i].key != -1)
+    if(curproc->proc_shm[i].shmid != -1)
       continue;
-    if(curproc->proc_shm[i].key == -1){
+    if(curproc->proc_shm[i].shmid == -1){
       flag1 = i;
       break;
     }
@@ -95,10 +106,10 @@ void * sys_shmat(void){
   void * check = shmmapmem(curproc->pgdir, currentsize, pages, shmid, permissions);
   if(!check)
     return (void *)-1;
-  curproc->proc_shm[flag1].key = glob_shm[shmid].key;
+  curproc->proc_shm[flag1].shmid = glob_shm[shmid].shmid;
   curproc->proc_shm[flag1].va = check;
   glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
-  glob_shm[shmid].shmid_ds.shm_attaches++;
+  glob_shm[shmid].shmid_ds.shm_nattch++;
   curproc->shmsz = (void *)((int)curproc->shmsz + PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz));
   return check;
 }
@@ -120,26 +131,19 @@ int sys_shmdt(void){
   }
   if(flag1 == -1)  //EINVAL
   	return -1;
-  int key = curproc->proc_shm[flag1].key;
-  int flag2 = -1;
-  for(int i = 0; i < SHMMNI; i++){
-  	if(glob_shm[i].key == key){
-  		flag2 = i;
-  		break;
-  	}
-  	else
-  		continue;
-  }
-	int oldsz = (int)curproc->shmsz;
-	int newsz = (int)curproc->shmsz - glob_shm[flag2].shmid_ds.shm_segsz;
-	curproc->shmsz = (void *)deallocuvm(curproc->pgdir, oldsz, newsz);
-	curproc->proc_shm[flag1].va = 0;
-	curproc->proc_shm[flag1].key = -1;
-	glob_shm[flag2].shmid_ds.shm_attaches--;
-	glob_shm[flag2].shmid_ds.shm_lpid = curproc->pid;
-	return 0;
+  int shmid = curproc->proc_shm[flag1].shmid;
+  if(glob_shm[shmid].key == -1)
+    return -1;
+  int oldsz = (int)curproc->shmsz;
+  int newsz = (int)curproc->shmsz - glob_shm[shmid].shmid_ds.shm_segsz;
+  curproc->shmsz = (void *)deallocshm(curproc->pgdir, oldsz, newsz);
+  curproc->proc_shm[shmid].va = 0;
+  curproc->proc_shm[shmid].shmid = -1;
+  glob_shm[shmid].shmid_ds.shm_nattch--;
+  glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
+  return 0;
 }
-/*
+
 int sys_shmctl(void){
   int shmid;
   int cmd;
@@ -150,7 +154,64 @@ int sys_shmctl(void){
     return -1;
   if(argptr(2, (void*)&buf, sizeof(*buf)) < 0)
     return -1;
-}*/
+  if(glob_shm[shmid].key == -1)  //EINVAL
+    return -1;
+  if(!(cmd == IPC_STAT || cmd == IPC_SET || cmd == IPC_INFO || cmd == IPC_RMID))  //EINVAL
+    return -1;  
+  if(cmd == IPC_STAT){
+    if(!(glob_shm[shmid].shmid_ds.shm_perm.mode == 444 || glob_shm[shmid].shmid_ds.shm_perm.mode == 666))  //EACCES
+      return -1;
+    * buf = glob_shm[shmid].shmid_ds;
+    return 0;
+  }
+  else if(cmd == IPC_SET){
+    if(glob_shm[shmid].shmid_ds.shm_segsz != buf->shm_segsz)  //EFAULT
+      return -1;
+    glob_shm[shmid].shmid_ds = *buf;
+    if(glob_shm[shmid].shmid_ds.shm_perm.mode == 444 || glob_shm[shmid].shmid_ds.shm_perm.mode == 666)
+      return 0;
+    else{
+      int flag = glob_shm[shmid].shmid_ds.shm_perm.mode;
+      int flagend = flag & 0x000001FF;
+      int flagoctal = 0;
+      int i = 1;
+      while(flagend != 0){
+        flagoctal += (flagend % 8) * i;
+        flagend /= 8;
+        i *= 10;
+      }
+      glob_shm[shmid].shmid_ds.shm_perm.mode = flagoctal;
+    }
+    return 0;
+  }
+  else if(cmd == IPC_INFO){
+    * buf = glob_shm[shmid].shmid_ds;
+    return 0;
+  }
+  else if(cmd == IPC_RMID){
+    if(glob_shm[shmid].shmid_ds.shm_nattch == 0){
+      for(int i = 0; i < 10; i++){
+        if(glob_shm[shmid].memory[i])
+          kfree((char *)P2V(glob_shm[shmid].memory[i]));
+      }
+      for(int j = 0; j < 10; j++)
+        glob_shm[shmid].memory[j] = (void *)0;
+      glob_shm[shmid].key = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.key = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.mode = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.rem = 0;
+      glob_shm[shmid].shmid_ds.shm_segsz = -1;
+      glob_shm[shmid].shmid_ds.shm_cpid = -1;
+      glob_shm[shmid].shmid_ds.shm_lpid = -1;
+      glob_shm[shmid].shmid_ds.shm_nattch = 0;
+    }
+    else if(glob_shm[shmid].shmid_ds.shm_nattch != 0){
+      glob_shm[shmid].shmid_ds.shm_perm.rem = 1;
+    }
+    return 0;
+  }
+  return -1;
+}
 
 int
 sys_fork(void)

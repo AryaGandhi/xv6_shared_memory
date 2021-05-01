@@ -24,9 +24,20 @@ void shminit(){
   for(int i = 0; i < SHMMNI; i++){
     glob_shm[i].key = -1;
     glob_shm[i].shmid = i;
-    for(int j = 0; j < 10; j++) {
+    for(int j = 0; j < 10; j++)
       glob_shm[i].memory[j] = (void *)0;
-    }
+    glob_shm[i].shmid_ds.shm_perm.key = -1;
+    glob_shm[i].shmid_ds.shm_perm.mode = -1;
+    glob_shm[i].shmid_ds.shm_perm.rem = 0;
+    glob_shm[i].shmid_ds.shminfo.shmmax = SHMMAX;
+    glob_shm[i].shmid_ds.shminfo.shmmin = SHMMIN;
+    glob_shm[i].shmid_ds.shminfo.shmmni = SHMMNI;
+    glob_shm[i].shmid_ds.shminfo.shmseg = SHMSEG;
+    glob_shm[i].shmid_ds.shminfo.shmall = SHMALL;
+    glob_shm[i].shmid_ds.shm_segsz = -1;
+    glob_shm[i].shmid_ds.shm_cpid = -1;
+    glob_shm[i].shmid_ds.shm_lpid = -1;
+    glob_shm[i].shmid_ds.shm_nattch = 0;
   }
 }
 
@@ -124,7 +135,7 @@ found:
 
   p->shmsz = (void *)HEAPMAX;
   for(int i = 0; i < 16; i++) {
-    p->proc_shm[i].key = -1;
+    p->proc_shm[i].shmid = -1;
     p->proc_shm[i].va = 0;
   }
 
@@ -227,6 +238,33 @@ fork(void)
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
   pid = np->pid;
+  for(i = 0; i < 16; i++){
+    np->proc_shm[i] = curproc->proc_shm[i];
+  }
+  void * currentsize = np->shmsz;
+  int permissions;
+  int pages;
+  void * check;
+  int shmid;
+  for(i = 0; i < 16; i++){
+    if(np->proc_shm[i].shmid == -1)
+      break;
+    else{
+      shmid = np->proc_shm[i].shmid;
+      pages = PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz) / PGSIZE;
+      permissions = glob_shm[shmid].shmid_ds.shm_perm.mode;
+      check = shmmapmem(np->pgdir, currentsize, pages, shmid, permissions);
+      if(!check){
+        cprintf("Unable to copy a shared memory segment from parent to child\n");
+        continue;
+      }
+      np->proc_shm[i].shmid = glob_shm[shmid].shmid;
+      np->proc_shm[i].va = check;
+      glob_shm[shmid].shmid_ds.shm_lpid = np->pid;
+      glob_shm[shmid].shmid_ds.shm_nattch++;
+    }
+    np->shmsz = (void *)((int)np->shmsz + PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz));
+  }
 
   acquire(&ptable.lock);
 
@@ -249,6 +287,30 @@ exit(void)
 
   if(curproc == initproc)
     panic("init exiting");
+    
+  int shmid;
+  for(int i = 0; i < 16; i++){
+    shmid = curproc->proc_shm[i].shmid;
+    if(glob_shm[shmid].key == -1)
+      continue;
+    if(glob_shm[shmid].shmid_ds.shm_perm.rem == 1){
+      for(int i = 0; i < 10; i++){
+        if(glob_shm[shmid].memory[i]){
+          kfree((char *)P2V(glob_shm[shmid].memory[i]));
+        }
+      }
+      for(int j = 0; j < 10; j++)
+        glob_shm[shmid].memory[j] = (void *)0;
+      glob_shm[shmid].key = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.key = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.mode = -1;
+      glob_shm[shmid].shmid_ds.shm_perm.rem = 0;
+      glob_shm[shmid].shmid_ds.shm_segsz = -1;
+      glob_shm[shmid].shmid_ds.shm_cpid = -1;
+      glob_shm[shmid].shmid_ds.shm_lpid = -1;
+      glob_shm[shmid].shmid_ds.shm_nattch = 0;
+    }
+  }
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){

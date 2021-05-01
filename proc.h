@@ -2,6 +2,7 @@
 #define SHMALL 10240  //System-wide limit on the total amount of shared memory, measured in units of page size.
 #define SHMMAX 40960  //(40KB)Maximum size in bytes for a shared memory segment.
 #define SHMMIN 1  //Minimum size in bytes for a shared memory segment(effectively 4096 B because page size is 4096 B)
+#define SHMSEG 16  //Maximum number of segments that a process can attach
 
 #define IPC_CREAT 01000  //Create key if key does not exist.
 #define IPC_EXCL 02000  //Fail if key exists.
@@ -13,6 +14,13 @@
 #define IPC_STAT 2  //Get `ipc_perm' options.
 #define IPC_INFO 3  //See ipcs.
 
+struct shminfo{
+  uint shmmax;  // Maximum segment size
+  uint shmmin;  // Minimum segment size; always 1
+  uint shmmni;  // Maximum number of segments
+  uint shmseg;  // Maximum number of segments that a process can attach
+  uint shmall;  // Maximum number of pages of shared memory, system-wide
+};
 
 // Per-CPU state
 struct cpu {
@@ -51,15 +59,18 @@ struct context {
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
 struct ipc_perm{
-  unsigned short mode;  //Permissions + SHM_DEST and SHM_LOCKED flags
+  int key;
+  int rem;  //1 if to be destroyed, otherwise 0
+  unsigned short mode;  //Permissions
 };
 
 struct shmid_ds{
   struct ipc_perm shm_perm;  //Ownership and permissions
+  struct shminfo shminfo;  //system wide shared memory limits
   int shm_segsz; //Size of segment (bytes)
   int shm_cpid;  //PID of creator
   int shm_lpid;  //PID of last shmat()/shmdt()
-  int shm_attaches;  //No. of current attaches
+  int shm_nattch;  //No. of current attaches
 };
 
 int total_shared_memory;  //total amount of shared memory, measured in units of page size(4k), should be less than SHMALL
@@ -74,7 +85,7 @@ struct glob_shm{
 
 // Track mapped shared pages
 struct proc_shm{
-  int key;
+  int shmid;
   void *va;
 };
 
