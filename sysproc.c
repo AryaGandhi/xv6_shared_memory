@@ -25,6 +25,7 @@ int sys_shmget(void){
     if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
       return glob_shm[i].shmid;
   }
+  
   if(key == IPC_PRIVATE){  //assigning a random key if value of key is given IPC_PRIVATE
     if(glob_shm[0].key == -1)
       key = 7845152;
@@ -38,6 +39,9 @@ int sys_shmget(void){
       }
     }
   }
+  
+  if(!(flag == (IPC_CREAT|IPC_EXCL|0666) || flag == (IPC_CREAT|IPC_EXCL|0444) || flag == (IPC_CREAT|0666) || flag == (IPC_CREAT|0444)))
+    return -1;  //ENOENT
   if(((PGROUNDUP(size))/PGSIZE + total_shared_memory) > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
     return -1;
   if(PGROUNDUP(size) > SHMMAX)  //EINVAL 
