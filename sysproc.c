@@ -24,8 +24,7 @@ int sys_shmget(void){
       return -1;
     if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
       return glob_shm[i].shmid;
-  }
-  
+  } 
   if(key == IPC_PRIVATE){  //assigning a random key if value of key is given IPC_PRIVATE
     if(glob_shm[0].key == -1)
       key = 7845152;
@@ -39,12 +38,11 @@ int sys_shmget(void){
       }
     }
   }
-  
   if(!(flag == (IPC_CREAT|IPC_EXCL|0666) || flag == (IPC_CREAT|IPC_EXCL|0444) || flag == (IPC_CREAT|0666) || flag == (IPC_CREAT|0444)))
     return -1;  //ENOENT
   if(((PGROUNDUP(size))/PGSIZE + total_shared_memory) > SHMALL || no_of_shared_memory_segments >= SHMMNI) //ENOSPC
     return -1;
-  if(PGROUNDUP(size) > SHMMAX)  //EINVAL 
+  if(PGROUNDUP(size) > SHMMAX)  //EINVAL
     return -1;
   struct proc *curproc = myproc();
   int flag2 = -1;
@@ -57,8 +55,7 @@ int sys_shmget(void){
     }
   }
   if(flag2 == -1)  //limit for number of shared memory segments for system reached
-    return -1;
-  
+    return -1; 
   int check = shmgetuvm(size, flag2);
   if(check == 0)
     return -1;
@@ -109,10 +106,8 @@ void * sys_shmat(void){
       break;
     }
   }
-  
   if(glob_shm[shmid].shmid_ds.shm_perm.mode == 444 && flag != SHM_RDONLY)  //EACCESS
     return (void *)-1;
-  
   if(flag1 == -1)  //limit for number of shared memory segments for that process reached
     return (void *)-1;
   void * currentsize = curproc->shmsz;
@@ -144,7 +139,7 @@ int sys_shmdt(void){
     }
   }
   if(flag1 == -1)  //EINVAL
-  	return -1;
+    return -1;
   int shmid = curproc->proc_shm[flag1].shmid;
   if(glob_shm[shmid].key == -1)
     return -1;
@@ -190,7 +185,7 @@ int sys_shmctl(void){
   if(glob_shm[shmid].key == -1)  //EINVAL
     return -1;
   if(!(cmd == IPC_STAT || cmd == IPC_SET || cmd == IPC_INFO || cmd == IPC_RMID))  //EINVAL
-    return -1;  
+    return -1;
   if(cmd == IPC_STAT){
     if(!(glob_shm[shmid].shmid_ds.shm_perm.mode == 444 || glob_shm[shmid].shmid_ds.shm_perm.mode == 666))  //EACCES
       return -1;

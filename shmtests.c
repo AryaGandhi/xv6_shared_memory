@@ -53,9 +53,7 @@ int main(){
   if(shmid7 < 0)
     printf(1, "EEXIST error in shmget\n");
   else
-    printf(1, "Memory segment of size 1000 and flags IPC_CREAT|IPC_EXCL|0666 with previously existing key, returned shared memory segment identifier\n");
-    
-    
+    printf(1, "Memory segment of size 1000 and flags IPC_CREAT|IPC_EXCL|0666 with previously existing key, returned shared memory segment identifier\n");   
   //shmat()
   printf(1, "\nSHMAT\n");
   void * shm = shmat(shmid, (void *)0, 0);
@@ -92,9 +90,7 @@ int main(){
   if((int)shm3_2 < 0)
     printf(1, "EACCESS error in shmat\n");
   else
-    printf(1, "Shared memory segment attached to address space of process\n");
-    
-    
+    printf(1, "Shared memory segment attached to address space of process\n");   
   //shmctl()
   printf(1, "\nSHMCTL\n");
   struct shmid_ds shmid_ds, *buf;
@@ -156,8 +152,7 @@ int main(){
   if(ctl8 < 0)
     printf(1, "EINVAL error in shmctl due to invalid command\n");
   else
-    printf(1, "shmctl successful with invalid command\n");
-    
+    printf(1, "shmctl successful with invalid command\n");  
   //shmdt()
   printf(1, "\nSHMDT\n");
   int shmdet = shmdt(shm3);
@@ -170,14 +165,13 @@ int main(){
     printf(1, "EINVAL error in shmdt\n");
   if(shmdet2 == 0)
     printf(1, "shmdt successful with invalid shmaddr\n");
-  
-  //for child process
+  //for child process(fork)
   printf(1, "\nShared memory behaviour on fork\n");
   char * s10 = shm;
   printf(1, "current data in the shared memory segment:\n");
   for(s10 = shm; *s10 != 0; s10++)
     printf(1, "%c", *s10);
-  printf(1, "\n"); 
+  printf(1, "\n");
   int pid = fork();
   if(pid < 0)
     printf(1, "error\n");
