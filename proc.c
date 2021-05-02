@@ -287,13 +287,28 @@ exit(void)
 
   if(curproc == initproc)
     panic("init exiting");
+  
+  for(int i = 0; i < 16; i++){
+    if(curproc->proc_shm[i].shmid == -1)
+      break;
+    else{
+      int shmid = curproc->proc_shm[i].shmid;
+      int oldsz = (int)curproc->shmsz;
+      int newsz = (int)curproc->shmsz - glob_shm[shmid].shmid_ds.shm_segsz;
+      curproc->shmsz = (void *)deallocshm(curproc->pgdir, oldsz, newsz);
+      glob_shm[shmid].shmid_ds.shm_nattch--;
+      glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
+    }
+  }
     
   int shmid;
   for(int i = 0; i < 16; i++){
     shmid = curproc->proc_shm[i].shmid;
+    if(shmid == -1)
+      break;
     if(glob_shm[shmid].key == -1)
       continue;
-    if(glob_shm[shmid].shmid_ds.shm_perm.rem == 1){
+    if(glob_shm[shmid].shmid_ds.shm_perm.rem == 1 && glob_shm[shmid].shmid_ds.shm_nattch == 0){
       for(int i = 0; i < 10; i++){
         if(glob_shm[shmid].memory[i]){
           kfree((char *)P2V(glob_shm[shmid].memory[i]));
@@ -310,7 +325,7 @@ exit(void)
       glob_shm[shmid].shmid_ds.shm_lpid = -1;
       glob_shm[shmid].shmid_ds.shm_nattch = 0;
     }
-  }
+   }
 
   // Close all open files.
   for(fd = 0; fd < NOFILE; fd++){

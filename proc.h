@@ -9,18 +9,12 @@
 
 #define IPC_PRIVATE 0
 
+#define SHM_RDONLY 03000  //Read only permission during shmat()
+
 #define IPC_RMID 0  //Remove identifier.
 #define IPC_SET 1  //Set `ipc_perm' options.
 #define IPC_STAT 2  //Get `ipc_perm' options.
 #define IPC_INFO 3  //See ipcs.
-
-struct shminfo{
-  uint shmmax;  // Maximum segment size
-  uint shmmin;  // Minimum segment size; always 1
-  uint shmmni;  // Maximum number of segments
-  uint shmseg;  // Maximum number of segments that a process can attach
-  uint shmall;  // Maximum number of pages of shared memory, system-wide
-};
 
 // Per-CPU state
 struct cpu {
@@ -57,6 +51,14 @@ struct context {
 };
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
+
+struct shminfo{
+  uint shmmax;  // Maximum segment size
+  uint shmmin;  // Minimum segment size; always 1
+  uint shmmni;  // Maximum number of segments
+  uint shmseg;  // Maximum number of segments that a process can attach
+  uint shmall;  // Maximum number of pages of shared memory, system-wide
+};
 
 struct ipc_perm{
   int key;

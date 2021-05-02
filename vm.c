@@ -244,7 +244,6 @@ void* shmmapmem(pde_t *pgdir, void * oldsz, uint pages, int shmid, int perm){
     else if(perm == 666)  // read and write permission
       check = mappages(pgdir, (void*)(a), PGSIZE, (uint)(glob_shm[shmid].memory[i]), PTE_W|PTE_U);
     else{
-      cprintf("Wrong permissions\n");
       return (void *)0;
     }
     if(check < 0){

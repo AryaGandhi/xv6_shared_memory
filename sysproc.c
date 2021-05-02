@@ -92,7 +92,13 @@ void * sys_shmat(void){
     return (void *)-1;
   if(argint(2, &flag) < 0)
     return (void *)-1;
+  if(shmid > SHMMNI || shmid < 0)  //EINVAL
+    return (void *)-1;
+  if(glob_shm[shmid].key == -1)  //EINVAL
+    return (void *)-1;
   int permissions = glob_shm[shmid].shmid_ds.shm_perm.mode;
+  if(flag == SHM_RDONLY)
+    permissions = 444;
   struct proc *curproc = myproc();
   int flag1 = -1;
   for(int i = 0; i < 16; i++){
@@ -103,12 +109,16 @@ void * sys_shmat(void){
       break;
     }
   }
+  
+  if(glob_shm[shmid].shmid_ds.shm_perm.mode == 444 && flag != SHM_RDONLY)  //EACCESS
+    return (void *)-1;
+  
   if(flag1 == -1)  //limit for number of shared memory segments for that process reached
     return (void *)-1;
   void * currentsize = curproc->shmsz;
   int pages = PGROUNDUP(glob_shm[shmid].shmid_ds.shm_segsz) / PGSIZE;
   void * check = shmmapmem(curproc->pgdir, currentsize, pages, shmid, permissions);
-  if(!check)
+  if(!check)  //ENOMEM
     return (void *)-1;
   curproc->proc_shm[flag1].shmid = glob_shm[shmid].shmid;
   curproc->proc_shm[flag1].va = check;
@@ -144,6 +154,23 @@ int sys_shmdt(void){
   curproc->proc_shm[shmid].va = 0;
   curproc->proc_shm[shmid].shmid = -1;
   glob_shm[shmid].shmid_ds.shm_nattch--;
+  if(glob_shm[shmid].shmid_ds.shm_perm.rem == 1 && glob_shm[shmid].shmid_ds.shm_nattch == 0){  //if nattch becomes zero and segment is marked for deletion, it is deleted
+    for(int i = 0; i < 10; i++){
+      if(glob_shm[shmid].memory[i]){
+        kfree((char *)P2V(glob_shm[shmid].memory[i]));
+      }
+    }
+    for(int j = 0; j < 10; j++)
+      glob_shm[shmid].memory[j] = (void *)0;
+    glob_shm[shmid].key = -1;
+    glob_shm[shmid].shmid_ds.shm_perm.key = -1;
+    glob_shm[shmid].shmid_ds.shm_perm.mode = -1;
+    glob_shm[shmid].shmid_ds.shm_perm.rem = 0;
+    glob_shm[shmid].shmid_ds.shm_segsz = -1;
+    glob_shm[shmid].shmid_ds.shm_cpid = -1;
+    glob_shm[shmid].shmid_ds.shm_lpid = -1;
+    glob_shm[shmid].shmid_ds.shm_nattch = 0;
+  }
   glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
   return 0;
 }
@@ -158,6 +185,8 @@ int sys_shmctl(void){
     return -1;
   if(argptr(2, (void*)&buf, sizeof(*buf)) < 0)
     return -1;
+  if(shmid > SHMMNI)
+    return -1;  //EINVAL
   if(glob_shm[shmid].key == -1)  //EINVAL
     return -1;
   if(!(cmd == IPC_STAT || cmd == IPC_SET || cmd == IPC_INFO || cmd == IPC_RMID))  //EINVAL
@@ -190,7 +219,13 @@ int sys_shmctl(void){
   }
   else if(cmd == IPC_INFO){
     * buf = glob_shm[shmid].shmid_ds;
-    return 0;
+    for(int i = 0; i < SHMMNI; i++){
+      if(glob_shm[i].key != -1)
+        continue;
+      else
+        return i;
+    }
+    return -1;
   }
   else if(cmd == IPC_RMID){
     if(glob_shm[shmid].shmid_ds.shm_nattch == 0){
