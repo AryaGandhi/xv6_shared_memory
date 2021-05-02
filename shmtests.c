@@ -125,17 +125,18 @@ int main(){
   if(ctl4 < 0)
     printf(1, "error in shmctl with IPC_INFO\n");
   else{
-    printf(1, "SHMMAX %d\n", buf2->shminfo.shmmax);
-    printf(1, "SHMMIN %d\n", buf2->shminfo.shmmin);
-    printf(1, "SHMMNI %d\n", buf2->shminfo.shmmni);
-    printf(1, "SHMSEG %d\n", buf2->shminfo.shmseg);
-    printf(1, "SHMALL %d\n", buf2->shminfo.shmall);
+    printf(1, "IPC_INFO successful with values:\n");
+    printf(1, "   SHMMAX %d\n", buf2->shminfo.shmmax);
+    printf(1, "   SHMMIN %d\n", buf2->shminfo.shmmin);
+    printf(1, "   SHMMNI %d\n", buf2->shminfo.shmmni);
+    printf(1, "   SHMSEG %d\n", buf2->shminfo.shmseg);
+    printf(1, "   SHMALL %d\n", buf2->shminfo.shmall);
   }
   int ctl5 = shmctl(shmid3, IPC_RMID, buf2);
   if(ctl5 < 0)
     printf(1, "error in shmctl with IPC_RMID\n");
   else
-    printf(1, "IPC_RMID successful\n");
+    printf(1, "IPC_RMID successful(shared memory segment marked for deletion)\n");
   struct shmid_ds shmid_ds3, *buf3;
   buf3 = &shmid_ds3;
   int ctl6 = shmctl(2000, IPC_STAT, buf3);
@@ -183,10 +184,10 @@ int main(){
   }
   if(pid > 0){
     wait();
-    printf(1, "reading the data after child process has written into it\n");
+    printf(1, "reading the data from the parent process after child process has written into it\n");
     for(s10 = shm; *s10 != 0; s10++)
       printf(1, "%c", *s10);
-    printf(1, "\n");
+    printf(1, "\n\n");
   }
   exit();
 }

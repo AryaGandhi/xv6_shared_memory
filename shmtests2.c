@@ -11,7 +11,7 @@ int main(){
   if(shmid < 0)
     printf(1, "error in shmget\n");
   else
-    printf(1, "Memory segment of size 1000 and flags IPC_CREAT|0666 with previously existing key, returned shared memory segment identifier\n");
+    printf(1, "Memory segment of size 10000 and flags IPC_CREAT|0666 with previously existing key, returned shared memory segment identifier\n");
   void * shm = shmat(shmid, (void *)0, 0);
   if((int)shm < 0)
     printf(1, "error in shmget\n");
@@ -23,5 +23,22 @@ int main(){
       printf(1, "%c", *s);
     printf(1, "\n");
   }
+  int shmdet = shmdt(shm);
+  if(shmdet == -1)
+    printf(1, "error in shmdt\n");
+  if(shmdet == 0)
+    printf(1, "shmdt successful\n");
+  struct shmid_ds shmid_ds, *buf;
+  buf = &shmid_ds;
+  int ctl = shmctl(shmid, IPC_RMID, buf);
+  if(ctl < 0)
+    printf(1, "error in shmctl with IPC_RMID\n");
+  else
+    printf(1, "IPC_RMID successful(shared memory segment has been destroyed)\n");
+  int shmid2 = shmget(10, 10000, IPC_CREAT|IPC_EXCL|0666);
+  if(shmid2 < 0)
+    printf(1, "error in shmget\n");
+  else
+    printf(1, "Memory segment of size 10000 and flags IPC_CREAT|IPC_EXCL|0666 newly created\n\n");
   exit();
 }
