@@ -24,7 +24,7 @@ int sys_shmget(void){
       return -1;
     if(glob_shm[i].key == key && glob_shm[i].shmid_ds.shm_segsz >= size)
       return glob_shm[i].shmid;
-  } 
+  }
   if(key == IPC_PRIVATE){  //assigning a random key if value of key is given IPC_PRIVATE
     if(glob_shm[0].key == -1)
       key = 7845152;
@@ -55,7 +55,7 @@ int sys_shmget(void){
     }
   }
   if(flag2 == -1)  //limit for number of shared memory segments for system reached
-    return -1; 
+    return -1;
   int check = shmgetuvm(size, flag2);
   if(check == 0)
     return -1;
