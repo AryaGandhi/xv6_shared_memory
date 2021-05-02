@@ -287,7 +287,7 @@ exit(void)
 
   if(curproc == initproc)
     panic("init exiting");
-  
+
   for(int i = 0; i < 16; i++){
     if(curproc->proc_shm[i].shmid == -1)
       break;
@@ -300,7 +300,7 @@ exit(void)
       glob_shm[shmid].shmid_ds.shm_lpid = curproc->pid;
     }
   }
-    
+
   int shmid;
   for(int i = 0; i < 16; i++){
     shmid = curproc->proc_shm[i].shmid;
